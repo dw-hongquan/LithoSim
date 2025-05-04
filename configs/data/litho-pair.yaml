@@ -1,0 +1,31 @@
+# _target_: src.data.litho_gen3_datamodule.LithoGenDataModule3
+# train_val_txt: /home/hehq/dataset/train_dataset_20250326.txt # 959672
+# test_txt: /home/hehq/dataset/small_test_250403/data.txt
+# batch_size: 3
+# train_val_split: [959601, 72] # 239900 * 4
+# num_workers: 0
+# pin_memory: False
+
+# _target_: src.data.litho_gen3_datamodule.LithoGenDataModule3
+# train_val_txt: /home/hehq/dataset/train_dataset_20250326_half_bs2.txt # 479836
+# test_txt: /home/hehq/dataset/small_test_250403/data.txt
+# batch_size: 2
+# train_val_split: [479800, 36] # 119959 * 4 = 119950 * 4 
+# num_workers: 0
+# pin_memory: False
+
+# _target_: src.data.litho_gen3_datamodule.LithoGenDataModule3
+# train_val_txt: /home/hehq/dataset/train_dataset_20250326_1_3_rand_bs3.txt # 159945
+# test_txt: /home/hehq/dataset/small_test_250403/data.txt
+# batch_size: 3
+# train_val_split: [159900, 45]
+# num_workers: 0
+# pin_memory: False
+
+_target_: src.data.litho_gen3_datamodule.LithoGenDataModule3
+train_val_txt: /home/hehq/dataset/train_dataset_20250326_1_3_rand_bs3_1.txt # 159945
+test_txt: /home/hehq/dataset/small_test_250403/data.txt
+batch_size: 9
+train_val_split: [159903, 45]
+num_workers: 0
+pin_memory: False

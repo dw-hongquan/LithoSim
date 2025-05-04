@@ -1,0 +1,26 @@
+_target_: src.models.litho_module.LithoLitModule
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 1.0e-4
+  weight_decay: 1.0e-5
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  mode: min
+  factor: 0.1
+  patience: 10
+
+net:
+  _target_: src.models.components.ed_cnn_net.EDCNNLitho
+
+criterion:
+  _target_: src.models.losses.loss.LithoLoss
+
+
+# compile model for faster training with pytorch 2.0
+compile: false
+
+visual_in_val: true
