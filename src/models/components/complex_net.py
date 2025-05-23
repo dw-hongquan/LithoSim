@@ -1,7 +1,7 @@
 '''
 Author: Hongquan
 Date: Apr. 22, 2025
-Description: modules for torch.complex64.
+Description: Complex-valued edcoder and decoder for LithoSim
 '''
 import sys
 sys.path.append('.')
@@ -16,22 +16,6 @@ class SpectralConv2d(nn.Module):
     def __init__(self, in_channels: int, out_channels: int, kernel_size: int, stride=1, padding=0,
                  dilation=1, groups=1, bias=True, padding_mode='zeros',
                  spectral_norm=False, phase_correction=True):
-        """
-        频域优化的复数卷积层
-        
-        参数:
-            in_channels: 输入通道数(复数视为1个通道)
-            out_channels: 输出通道数
-            kernel_size: 卷积核大小
-            stride: 步长
-            padding: 填充
-            dilation: 膨胀率
-            groups: 分组数
-            bias: 是否使用偏置
-            padding_mode: 填充模式
-            spectral_norm: 是否对权重应用谱归一化
-            phase_correction: 是否应用相位校正
-        """
         super().__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -44,7 +28,6 @@ class SpectralConv2d(nn.Module):
         self.spectral_norm = spectral_norm
         self.phase_correction = phase_correction
         
-        # 复数权重初始化 (实部和虚部)
         self.weight_real = nn.Parameter(torch.empty(
             (out_channels, in_channels // groups, *self.kernel_size),
             dtype=torch.float32))
@@ -57,7 +40,6 @@ class SpectralConv2d(nn.Module):
         else:
             self.register_parameter('bias', None)
             
-        # 相位校正参数
         if phase_correction:
             self.phase_scale = nn.Parameter(torch.ones(1))
             self.phase_shift = nn.Parameter(torch.zeros(1))
@@ -67,12 +49,10 @@ class SpectralConv2d(nn.Module):
             
         self.reset_parameters()
         
-        # 谱归一化
         if spectral_norm:
             self._spectral_norm()
 
     def reset_parameters(self):
-        # 复数权重初始化 (Glorot初始化)
         fan_in = self.in_channels * self.kernel_size[0] * self.kernel_size[1]
         fan_out = self.out_channels * self.kernel_size[0] * self.kernel_size[1]
         
@@ -87,28 +67,23 @@ class SpectralConv2d(nn.Module):
             nn.init.uniform_(self.bias, -bound, bound)
             
     def _spectral_norm(self):
-        """应用谱归一化到权重矩阵"""
         with torch.no_grad():
-            # 计算权重矩阵的奇异值
             weight_shape = self.weight_real.shape
             weight_matrix = torch.view_as_complex(
                 torch.stack([self.weight_real, self.weight_imag], dim=-1))
             weight_matrix = weight_matrix.view(weight_shape[0], -1)
             
-            # 幂迭代法估计最大奇异值
             u = torch.randn(weight_shape[0], 1, device=weight_matrix.device)
             v = torch.randn(1, weight_matrix.size(1), device=weight_matrix.device)
             
-            for _ in range(3):  # 通常3次迭代足够
+            for _ in range(3):
                 v = F.normalize(torch.mm(u.t(), weight_matrix).t(), dim=0)
                 u = F.normalize(torch.mm(weight_matrix, v), dim=0)
                 
             sigma = torch.mm(torch.mm(u.t(), weight_matrix), v)
-            
-            # 归一化权重
+
             weight_matrix = weight_matrix / sigma
-            
-            # 重新分解为实部和虚部
+
             weight_complex = weight_matrix.view(*weight_shape)
             self.weight_real.data = weight_complex.real
             self.weight_imag.data = weight_complex.imag
@@ -116,43 +91,38 @@ class SpectralConv2d(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         if not x.is_complex():
             raise ValueError("Input must be a complex tensor")
-            
-        # 分离实部和虚部
+
         x_real = x.real
         x_imag = x.imag
-        
-        # 执行复数卷积 (实部卷积和虚部卷积)
+
         conv_real = F.conv2d(
             x_real, self.weight_real, None, self.stride, self.padding,
             self.dilation, self.groups)
         conv_imag = F.conv2d(
             x_imag, self.weight_imag, None, self.stride, self.padding,
             self.dilation, self.groups)
-        
-        # 交叉项
+
         conv_cross_real = F.conv2d(
             x_real, self.weight_imag, None, self.stride, self.padding,
             self.dilation, self.groups)
         conv_cross_imag = F.conv2d(
             x_imag, self.weight_real, None, self.stride, self.padding,
             self.dilation, self.groups)
-        
-        # 组合结果 (复数乘法)
+
         out_real = conv_real - conv_imag
         out_imag = conv_cross_real + conv_cross_imag
-        
-        # 应用相位校正
+
         if self.phase_correction:
             magnitude = torch.sqrt(out_real**2 + out_imag**2 + 1e-8)
             phase = torch.atan2(out_imag, out_real)
             
-            # 可学习的相位调整
+
             phase = phase * self.phase_scale + self.phase_shift
             
             out_real = magnitude * torch.cos(phase)
             out_imag = magnitude * torch.sin(phase)
         
-        # 添加偏置
+
         if self.bias is not None:
             out_real = out_real + self.bias.view(1, -1, 1, 1)
             out_imag = out_imag + self.bias.view(1, -1, 1, 1)
@@ -178,9 +148,6 @@ class SpectralConv2d(nn.Module):
             s += ', phase_correction=True'
         return s.format(**self.__dict__)
 
-def nonlinearity_1(x: Tensor) -> Tensor:
-    return x * torch.sigmoid(x)
-
 def nonlinearity(x: Tensor) -> Tensor:
     '''
     nonlinearity for FFT complex tensor
@@ -191,108 +158,6 @@ def nonlinearity(x: Tensor) -> Tensor:
     magnitude_out = magnitude * torch.sigmoid(magnitude)
 
     return magnitude_out * torch.exp(1j * phase)
-
-class ComplexGroupNorm_2(nn.Module):
-    def __init__(self, num_groups, num_channels, eps=1e-5, affine=True, 
-                 phase_normalization=True, magnitude_scaling=True):
-        """
-        SpectralGroupNorm
-        
-        params:
-            num_groups: 分组数量
-            num_channels: 输入通道数(复数视为1个通道)
-            eps: 数值稳定性常数
-            affine: 是否使用可学习的缩放和平移参数
-            phase_normalization: 是否对相位进行归一化
-            magnitude_scaling: 是否对幅度进行缩放
-        """
-        super().__init__()
-        self.num_groups = num_groups
-        self.num_channels = num_channels
-        self.eps = eps
-        self.affine = affine
-        self.phase_normalization = phase_normalization
-        self.magnitude_scaling = magnitude_scaling
-
-        if self.magnitude_scaling and affine:
-            self.weight_mag = nn.Parameter(torch.ones(1, num_channels, 1, 1))
-            self.bias_mag = nn.Parameter(torch.zeros(1, num_channels, 1, 1))
-        else:
-            self.register_parameter('weight_mag', None)
-            self.register_parameter('bias_mag', None)
-
-        if self.phase_normalization and affine:
-            self.weight_phase = nn.Parameter(torch.ones(1, num_channels, 1, 1))
-            self.bias_phase = nn.Parameter(torch.zeros(1, num_channels, 1, 1))
-        else:
-            self.register_parameter('weight_phase', None)
-            self.register_parameter('bias_phase', None)
-
-    def forward(self, x: Tensor) -> Tensor:
-        if not x.is_complex():
-            raise ValueError("Input must be a complex tensor.")
-        
-        if torch.isnan(x).any() or torch.isinf(x).any():
-            raise ValueError("Input contains NaN or Inf values")
-
-        B, C, H, W = x.shape
-        G = self.num_groups
-        
-
-        magnitude = x.abs()
-        phase = torch.atan2(x.imag, x.real)  # [-π, π]
-
-        magnitude = magnitude.view(B, G, -1, H, W)
-        
-
-        mean_mag = magnitude.mean(dim=[2, 3, 4], keepdim=True)
-        var_mag = magnitude.var(dim=[2, 3, 4], keepdim=True)
-        
-
-        magnitude_norm = (magnitude - mean_mag) / torch.sqrt(var_mag + self.eps)
-        magnitude_norm = magnitude_norm.view(B, C, H, W)
-        
-
-        if self.magnitude_scaling and self.affine:
-            magnitude_norm = magnitude_norm * self.weight_mag + self.bias_mag
-        
-
-        if self.phase_normalization:
-
-            phase_cos = torch.cos(phase)
-            phase_sin = torch.sin(phase)
-
-            phase_cos = phase_cos.view(B, G, -1, H, W)
-            phase_sin = phase_sin.view(B, G, -1, H, W)
-
-            mean_cos = phase_cos.mean(dim=[2, 3, 4], keepdim=True)
-            mean_sin = phase_sin.mean(dim=[2, 3, 4], keepdim=True)
-
-            phase_cos_norm = phase_cos - mean_cos
-            phase_sin_norm = phase_sin - mean_sin
-
-            norm_length = torch.sqrt(phase_cos_norm**2 + phase_sin_norm**2 + self.eps)
-            phase_cos_norm = phase_cos_norm / norm_length
-            phase_sin_norm = phase_sin_norm / norm_length
-
-            phase_norm = torch.atan2(phase_sin_norm, phase_cos_norm)
-            phase_norm = phase_norm.view(B, C, H, W)
-
-            if self.affine:
-                phase_norm = phase_norm * self.weight_phase + self.bias_phase
-        else:
-            phase_norm = phase
-
-        real_norm = magnitude_norm * torch.cos(phase_norm)
-        imag_norm = magnitude_norm * torch.sin(phase_norm)
-        
-        return torch.complex(real_norm, imag_norm)
-    
-    def extra_repr(self):
-        return (f"num_groups={self.num_groups}, num_channels={self.num_channels}, "
-                f"eps={self.eps}, affine={self.affine}, "
-                f"phase_normalization={self.phase_normalization}, "
-                f"magnitude_scaling={self.magnitude_scaling}")
 
 class ComplexGroupNorm(nn.Module):
     def __init__(self, num_groups, num_channels, eps=1e-5, affine=True):
@@ -327,29 +192,6 @@ class ComplexGroupNorm(nn.Module):
 
         return x_complex
 
-class ComplexGroupNorm_1(nn.Module):
-    def __init__(self, num_groups, num_channels, eps=1e-5, affine=True):
-        super().__init__()
-        self.num_groups = num_groups
-        self.num_channels = num_channels
-        self.eps = eps
-        self.affine = affine
-
-        self.gn = nn.GroupNorm(num_groups=num_groups, num_channels=2*num_channels, eps=eps, affine=affine)
-
-    def forward(self, x: Tensor) -> Tensor:
-        x_real = torch.view_as_real(x)
-        
-        original_shape = x_real.size()
-        x_combined = x_real.permute(0, 1, 4, 2, 3).contiguous()  # 将最后的2维移到通道后
-        x_combined = x_combined.view(original_shape[0], -1, *original_shape[2:-1])  # 合并C和2到通道维度
-
-        x_normalized = self.gn(x_combined)
-        x_normalized = x_normalized.view(original_shape[0], self.num_channels, 2, *original_shape[2:-1])
-        x_normalized = x_normalized.permute(0, 1, 3, 4, 2).contiguous()  # 恢复维度顺序
-        x_complex = torch.view_as_complex(x_normalized)
-        
-        return x_complex
 
 def ComplexNormalize(in_channels: int, num_groups: int = 32):
     assert in_channels % num_groups == 0, f'in_channels {in_channels} must be devided by num_groups: {num_groups}'
@@ -358,15 +200,6 @@ def ComplexNormalize(in_channels: int, num_groups: int = 32):
 class ComplexUpsample(nn.Module):
     def __init__(self, scale_factor: int = 2, mode: str = 'bilinear', 
                  phase_mode: str = 'bilinear', align_corners: bool = False) -> None:
-        """
-        PolarSampling
-        
-        params:
-            scale_factor: 上采样比例因子
-            mode: 幅度上采样模式 ('nearest', 'bilinear', 'bicubic')
-            phase_mode: 相位上采样模式 ('nearest', 'bilinear', 'bicubic')
-            align_corners: 是否对齐角落像素
-        """
         super().__init__()
         self.scale_factor = scale_factor
         self.mode = mode
@@ -418,36 +251,6 @@ class ComplexUpsample(nn.Module):
                 f"magnitude_mode={self.mode}, phase_mode={self.phase_mode}, "
                 f"align_corners={self.align_corners})")
 
-class ComplexUpsample_1(nn.Module):
-    def __init__(self, scale_factor: int = 2, mode: str = 'nearest', align_corners: bool = None):
-        super().__init__()
-        self.scale_factor = scale_factor
-        self.mode = mode
-        self.align_corners = align_corners if mode != 'nearest' else None
-
-    def forward(self, x: Tensor) -> Tensor:
-        if not x.is_complex():
-            raise ValueError("Input must be a complex tensor.")
-        
-
-        x_real = torch.view_as_real(x)
-
-        N, C, H, W = x.size()
-        x_real = x_real.permute(0, 1, 4, 2, 3).reshape(N, C * 2, H, W)
-
-        upsampled = F.interpolate(
-            x_real, 
-            scale_factor=self.scale_factor, 
-            mode=self.mode, 
-            align_corners=self.align_corners
-        )
-
-        new_C = upsampled.size(1) // 2
-        upsampled = upsampled.view(N, new_C, 2, upsampled.size(2), upsampled.size(3)).contiguous()
-        upsampled = upsampled.permute(0, 1, 3, 4, 2).contiguous()
-
-        return torch.view_as_complex(upsampled)
-
 class ComplexConvUpsample(nn.Module):
     def __init__(self, in_channels: int, with_conv: bool) -> None:
         super().__init__()
@@ -471,20 +274,7 @@ class ComplexAvgPool2d(nn.Module):
     def __init__(self, kernel_size, stride=None, padding=0,
                  ceil_mode=False, count_include_pad=True, 
                  divisor_override=None, phase_pool_mode='circular'):
-        """
-        PolarAvgPool2d
-        
-        params:
-            kernel_size: 池化核大小
-            stride: 步长
-            padding: 填充
-            ceil_mode: 是否使用ceil模式计算输出形状
-            count_include_pad: 是否包含padding在平均计算中
-            divisor_override: 可选的除数覆盖
-            phase_pool_mode: 相位池化模式 ('circular' 或 'linear')
-                            'circular' - 在单位圆上平均相位
-                            'linear' - 直接线性平均相位(不推荐)
-        """
+
         super().__init__()
         self.kernel_size = kernel_size
         self.stride = stride
@@ -552,25 +342,6 @@ class ComplexAvgPool2d(nn.Module):
                 f"ceil_mode={self.ceil_mode}, count_include_pad={self.count_include_pad}, "
                 f"divisor_override={self.divisor_override}, phase_pool_mode={self.phase_pool_mode})")
 
-class ComplexAvgPool2d_1(nn.Module):
-    def __init__(self, kernel_size, stride=None, padding=0,
-                 ceil_mode=False, count_include_pad=True, divisor_override=None):
-        super().__init__()
-        self.avgpool = nn.AvgPool2d(
-            kernel_size=kernel_size,
-            stride=stride,
-            padding=padding,
-            ceil_mode=ceil_mode,
-            count_include_pad=count_include_pad,
-            divisor_override=divisor_override
-        )
-    
-    def forward(self, x):
-        assert x.is_complex(), "Input must be a complex tensor"
-        real = self.avgpool(x.real)
-        imag = self.avgpool(x.imag)
-        return torch.complex(real, imag)
-
 class ComplexConvDownsample(nn.Module):
     def __init__(self, in_channels: int, with_conv: bool) -> None:
         super().__init__()
@@ -594,16 +365,7 @@ class ComplexConvDownsample(nn.Module):
 
 class ComplexDropout(nn.Module):
     def __init__(self, p=0.5, mode='magnitude', phase_preserve=True):
-        """
-        SpectralDropout
-        
-        params:
-            p: dropout概率
-            mode: dropout模式 ('magnitude'或'complex')
-                  'magnitude' - 只对幅度进行dropout
-                  'complex' - 对整个复数进行dropout
-            phase_preserve: 是否保持相位关系(仅当mode='magnitude'时有效)
-        """
+
         super().__init__()
         if p < 0 or p >= 1:
             raise ValueError(f"dropout probability must be in [0, 1), got {p}")
@@ -655,24 +417,6 @@ class ComplexDropout(nn.Module):
     def extra_repr(self):
         return f"p={self.p}, mode='{self.mode}', phase_preserve={self.phase_preserve}"
 
-class ComplexDropout_1(nn.Module):
-    def __init__(self, p=0.5):
-        super().__init__()
-        if p < 0 or p >= 1:
-            raise ValueError("dropout probability has to be in [0, 1), but got {}".format(p))
-        self.p = p
-
-    def forward(self, x):
-        if not self.training or self.p == 0:
-            return x
-
-        keep_prob = 1 - self.p
-        scale = 1 / keep_prob
-        mask = torch.rand_like(x.real) < keep_prob
-        mask = mask.type_as(x.real)
-        mask = mask * scale
-
-        return x * mask
 
 class ComplexResnetBlock(nn.Module):
     def __init__(self, *, in_channels, out_channels=None, conv_shortcut=False,
@@ -748,15 +492,6 @@ class ComplexResnetBlock(nn.Module):
 class ComplexSoftmax(nn.Module):
     def __init__(self, dim: int = -1, temperature: float = 1.0, 
                  phase_preserve: bool = True, eps: float = 1e-8):
-        """
-        SpectralSoftmax
-        
-        参数:
-            dim: 计算softmax的维度
-            temperature: 温度参数控制softmax的锐度
-            phase_preserve: 是否保持原始相位信息
-            eps: 数值稳定性常数
-        """
         super().__init__()
         self.dim = dim
         self.temperature = temperature
@@ -795,19 +530,6 @@ class ComplexSoftmax(nn.Module):
     def extra_repr(self):
         return (f"dim={self.dim}, temperature={self.temperature}, "
                 f"phase_preserve={self.phase_preserve}, eps={self.eps}")
-
-class ComplexSoftmax_1(nn.Module):
-    def __init__(self, dim: int = -1):
-        super().__init__()
-        self.dim = dim
-        self.softmax = nn.Softmax(dim=dim)
-    
-    def forward(self, input: Tensor) -> Tensor:
-        real_part = input.real
-        softmax_real = self.softmax(real_part)
-        phase = torch.angle(input)
-        output = torch.polar(softmax_real, phase)
-        return output
 
 class ComplexAttnBlock(nn.Module):
     def __init__(self, in_channels):

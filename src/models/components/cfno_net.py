@@ -1,7 +1,7 @@
 '''
 Author: Hongquan
 Date: Apr. 22, 2025
-Description: convolutional FNO (CFNO) for litho.
+Description: convolutional FNO (CFNO).
 '''
 import sys
 sys.path.append('.')

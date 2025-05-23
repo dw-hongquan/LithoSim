@@ -1,12 +1,13 @@
 '''
 Author: Hongquan
 Date: Feb. 26, 2025
+Description: a tool to generate your own dataset path, please replace ``dataset_dir`` and ``txt_path`` to true path for your dataset.
 '''
 import os
 
 def dataset2txt_fast(
-        dataset_dir: str = '/home/hehq/dataset/metal0_20250430',
-        txt_path: str = '/home/hehq/dataset/dataset_path/1.txt'
+        dataset_dir: str = './lithosim/opc_metal/train_val',
+        txt_path: str = './lithosim_path/opc_metal'
         ):
     dose_list = [-0.1, -0.08, -0.06, -0.04, -0.02, 0, 0.02, 0.04, 0.06, 0.08, 0.1]
     defocus_list = [-40, 0, 40]
@@ -34,5 +35,4 @@ def dataset2txt_fast(
                         print(new_line, end='')
 
 if __name__ == "__main__":
-    dataset2txt_fast(dataset_dir = '/home/hehq/dataset/lithosim/via/test',
-                txt_path = '/home/hehq/dataset/lithosim/via_test.txt')
+    dataset2txt_fast()

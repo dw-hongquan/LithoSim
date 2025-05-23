@@ -1,7 +1,7 @@
 '''
 Author: Hongquan He
 Date: Apr 01, 2025
-Description: source-mask-dose-defocus-resist
+Description: source-mask-dose-defocus-resist DataModule
 '''
 
 from typing import Any, Dict, Optional, Tuple

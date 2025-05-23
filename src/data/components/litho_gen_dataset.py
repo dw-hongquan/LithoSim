@@ -1,7 +1,7 @@
 '''
 Author: Hongquan
 Date: Mar. 24, 2025
-Description: doinn/damo source-mask-dose-defocus-resist data pair
+Description: a dataset structure of source-mask-dose-defocus-resist data pair
 '''
 
 import os

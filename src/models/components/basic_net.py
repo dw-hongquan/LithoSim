@@ -1,7 +1,7 @@
 '''
 Author: Hongquan
 Date: Apr. 22, 2025
-Description: modules for torch.float64.
+Description: encoder and decoder for LithoSim
 '''
 
 import torch

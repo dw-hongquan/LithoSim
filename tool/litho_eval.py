@@ -1,3 +1,9 @@
+'''
+Author: Hongquan
+Date: May. 01, 2025
+Description: a test pipeline for LithoSim, calculate iou, pa, mse, tat
+'''
+
 import sys
 sys.path.append('.')
 
@@ -57,11 +63,4 @@ def visual(pred: Tensor, save_path: str = '', activate: bool = True):
     U.save_image(pred_data, save_path)
 
 if __name__ == '__main__':
-    lithosim_path = '/home/hehq/src/hongquan-gen/logs/doinn-fused/runs/2025-04-23_19-18-45/checkpoints/last.ckpt'
-    test_dir = '/home/hehq/dataset/lithosim/opc_metal/test/50001'
-    src_path = os.path.join(test_dir, 'source_simple.src')
-    mask_path = os.path.join(test_dir, 'mask.png')
-    resist_path = '/home/hehq/dataset/lithosim/opc_metal/test/50001/RI_dose_0_defocus_0.png'
-    save_path = '/home/hehq/dataset/visual/1.png'
-    iou, pa, mse, tat = litho_eval(lithosim_path, src_path, mask_path, resist_path=resist_path, save_path=save_path)
-    print(iou, pa, mse, tat)
+    pass

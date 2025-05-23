@@ -1,7 +1,7 @@
 '''
 Author: Hongquan
 Date: Apr 06, 2025
-Description: ValueCrossAttn and PosCrossAttn
+Description: ValueCrossAttn and PosCrossAttn for source and process variations.
 '''
 import sys
 sys.path.append('.')
@@ -467,8 +467,4 @@ def max_neg_value(t):
     return -torch.finfo(t.dtype).max
 
 if __name__ == '__main__':
-    attn = ComplexChunkedValueCrossAttn(64)
-    x = torch.randn(2, 64, 256, 256, dtype=complex64)
-    text = torch.randn(2, 16)
-    y = attn(x, text)
-    print(y.shape)
+    pass
