@@ -51,7 +51,6 @@ class LithoGenDataset(Dataset):
         mask_tensor = self.transforms(mask_data)
         resist_tensor = self.transforms(resist_data)
 
-        # source [7180, 3]
         source_tensor = self.src2tensor(source_path)
         return source_tensor, mask_tensor, dose, defocus, resist_tensor
 

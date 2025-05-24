@@ -20,7 +20,6 @@ criterion:
   _target_: src.models.losses.loss.LithoLoss
 
 
-# compile model for faster training with pytorch 2.0
 compile: false
 
 visual_in_val: true

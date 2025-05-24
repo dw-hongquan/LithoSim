@@ -1,0 +1,8 @@
+_target_: src.data.litho_gen_datamodule.LithoGenDataModule
+train_val_txt: /home/hehq/dataset/lithosim/opc_metal/train_val
+test_txt: /home/hehq/dataset/opc_metal/test
+batch_size: 9
+# modify train_val_split following Table 2 in the paper.
+train_val_split: [693330, 99000]
+num_workers: 0
+pin_memory: False
