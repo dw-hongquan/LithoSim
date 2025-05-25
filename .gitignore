@@ -152,3 +152,8 @@ configs/local/default.yaml
 
 # Aim logging
 .aim
+
+# mac
+.DS_Store
+**/.DS_Store
+.DS_Store?

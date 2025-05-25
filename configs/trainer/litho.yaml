@@ -6,4 +6,5 @@ check_val_every_n_epoch: 1
 log_every_n_steps: 1
 
 accelerator: gpu
+# change devices id here
 devices: [0, 1, 2, 3]
