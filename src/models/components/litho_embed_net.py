@@ -233,19 +233,4 @@ class ComplexChunkedLithoAttn(nn.Module):
 
 
 if __name__ == "__main__":
-    # # 输入示例 [B=2, N=7180, D=65]
-    # input_tensor = torch.randn(2, 7180, 65)
-    
-    # # 初始化压缩器（将N从7180压缩到2048）
-    # compressor = SourceCompressor(K=2048)
-    
-    # # 前向传播
-    # output = compressor(input_tensor)
-    
-    # print("输入形状:", input_tensor.shape)  # torch.Size([2, 7180, 65])
-    # print("输出形状:", output.shape)       # torch.Size([2, 2048, 65])
-
-    compressor = ChunkedSourceCompressor(K=32, context_dim=64, chunk_size=128)
-    x = torch.randn(4, 10000, 64)  # 假设输入包含10000个元素
-    output = compressor(x)          # 输出形状: [4, 32, 64]
-    print(output.shape)
+    pass

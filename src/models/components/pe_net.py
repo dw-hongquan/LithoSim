@@ -52,26 +52,5 @@ def continuous_positional_encoding_2d(d_model: int, coords: Tensor) -> Tensor:
     return pe.contiguous()
 
 
-# 示例使用
 if __name__ == "__main__":
-    # coords = torch.randn(2, 7180, 2)
-    # pos_emb = continuous_positional_encoding_2d(d_model=32, coords=coords)
-
-    # # 与 value 结合（假设 value 形状为 [2, 7180, 1]）
-    # values = torch.rand(2, 7180, 1)
-    # features = torch.cat([pos_emb, values], dim=-1)  # [2, 7180, 65]
-    # print(features.shape)
-    # 参数设置
-    B = 4
-    d_model = 6
-
-    # 示例输入（已归一化到[-1, 1]）
-    x = torch.tensor([[-0.1], [0.3], [0.6], [-0.5]])  # 形状 [4, 1]
-
-    # 初始化编码器
-    pe = continuous_positional_encoding_1d(d_model, x)
-
-    print("输入数据形状:", x.shape)
-    print("位置编码形状:", pe.shape)
-    print("\n具体编码示例（保留4位小数）:")
-    print(pe.detach().numpy().round(4))
+    pass
