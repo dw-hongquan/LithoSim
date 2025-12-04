@@ -1,0 +1,30 @@
+defaults:
+  - _self_
+  - data: litho-pair
+  - model: edtrans
+  - callbacks: gen
+  - logger: aim
+  - trainer: litho
+  - paths: default
+  - extras: default
+  - hydra: default
+
+  - experiment: null
+
+  - hparams_search: null
+
+  - optional local: default
+
+  - debug: null
+
+task_name: "edtrans"
+
+tags: ["edtrans"]
+
+edtrans: True
+
+test: True
+
+ckpt_path: null
+
+seed: null

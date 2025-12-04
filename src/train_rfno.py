@@ -109,7 +109,7 @@ def doinn(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     return metric_dict, object_dict
 
 
-@hydra.main(version_base="1.3", config_path="../configs", config_name="doinn-fused.yaml")
+@hydra.main(version_base="1.3", config_path="../configs", config_name="rfno-fused.yaml")
 def main(cfg: DictConfig) -> Optional[float]:
     """Main entry point for training.
 
